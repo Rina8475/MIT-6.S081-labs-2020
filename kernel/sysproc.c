@@ -107,3 +107,25 @@ uint64 sys_trace(void) {
     p->trace_mask = flag;
     return 0;
 }
+
+/* because i only use these functions in the next function,
+ * so i just declare these functions in there */
+#include "sysinfo.h"
+
+extern int freemem(void);
+extern int nproc(void);
+
+uint64 sys_sysinfo(void) {
+    struct sysinfo info;
+    uint64 ptr;
+
+    if (argaddr(0, &ptr) < 0) {
+        return -1;
+    }
+    info.freemem = freemem();
+    info.nproc = nproc();
+    if (copyout(myproc()->pagetable, ptr, (char *) &info, sizeof(info)) < 0) {
+        return -1;
+    }
+    return 0;
+}

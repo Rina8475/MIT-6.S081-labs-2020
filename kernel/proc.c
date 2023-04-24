@@ -232,6 +232,9 @@ userinit(void)
   uvminit(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
+  /* copy the content of user page table to kernel page table */
+  copymappings(p->pagetable, p->kernelpgtbl, 0, PGSIZE);
+
   // prepare for the very first "return" from kernel to user.
   p->trapframe->epc = 0;      // user program counter
   p->trapframe->sp = PGSIZE;  // user stack pointer
@@ -257,8 +260,14 @@ growproc(int n)
     if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
       return -1;
     }
+    if (copymappings(p->pagetable, p->kernelpgtbl, p->sz, n) < 0) {
+      panic("sbrk: alloc error");
+      return -1;
+    }
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
+    uvmunmap(p->kernelpgtbl, PGROUNDUP(sz), 
+          (PGROUNDUP(p->sz)-PGROUNDUP(sz))/PGSIZE, 0);
   }
   p->sz = sz;
   return 0;
@@ -285,6 +294,13 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+
+  /* copy the content of user page table of child to it's kernel page table */
+  if (copymappings(np->pagetable, np->kernelpgtbl, 0, np->sz) < 0) {
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
 
   np->parent = p;
 

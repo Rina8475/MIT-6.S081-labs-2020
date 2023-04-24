@@ -97,6 +97,14 @@ exec(char *path, char **argv)
   if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
     goto bad;
 
+  /* Alloc a new kernel page table */
+  if (sz > PLIC) {
+    panic("exec: stack overflow");
+    goto bad;
+  }
+  uvmunmap(p->kernelpgtbl, 0, PGROUNDUP(p->sz)/PGSIZE, 0);
+  copymappings(pagetable, p->kernelpgtbl, 0, sz);
+
   // arguments to user main(argc, argv)
   // argc is returned via the system call return
   // value, which goes in a0.

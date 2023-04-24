@@ -1,0 +1,3 @@
+the reason is when srcva < p->sz, but len is very large, then srcva + len may overflows uint64, so we need test this.
+eg. srcva = 1, len = UINT64_MAX
+

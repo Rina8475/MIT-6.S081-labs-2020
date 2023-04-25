@@ -1,0 +1,30 @@
+1. Which registers contain arguments to functions? For example, which register holds 13 in main's call to printf?
+the arguments 1, 2, 3 are stored in register a0, a1, a2 separately, the 13 is stored in register a2.
+
+2. Where is the call to function f in the assembly code for main? Where is the call to g? (Hint: the compiler may inline functions.)
+the call to function f and g has been inlined.
+
+3. At what address is the function printf located?
+the function printf is located in address 0x630
+
+4. What value is in the register ra just after the jalr to printf in main?
+0x34
+
+5. Run the following code.
+
+	unsigned int i = 0x00646c72;
+	printf("H%x Wo%s", 57616, &i);
+      
+What is the output?
+
+The output depends on that fact that the RISC-V is little-endian. If the RISC-V were instead big-endian what would you set i to in order to yield the same output? Would you need to change 57616 to a different value?
+
+the output is "He110 World"
+if the RISC-V were big-endian, then need set i = 0x726c6400
+
+6. In the following code, what is going to be printed after 'y='? (note: the answer is not a specific value.) Why does this happen?
+
+	printf("x=%d y=%d", 3);
+
+there maybe print a random value.
+

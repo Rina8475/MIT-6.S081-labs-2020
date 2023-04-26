@@ -132,3 +132,18 @@ printfinit(void)
   initlock(&pr.lock, "pr");
   pr.locking = 1;
 }
+
+/* backtrace - trace a list of the function calls on the stack 
+ * above the point at which the error occurred. */
+void backtrace(void) {
+  uint64 fp, top, down;
+
+  fp = r_fp();
+  top = PGROUNDUP(fp);
+  down = PGROUNDDOWN(fp);
+  printf("backtrace:\n");
+  while (down <= fp && fp < top) {
+    printf("%p\n", *(uint64 *) (fp-8));
+    fp = *(uint64 *) (fp-16);
+  }
+}

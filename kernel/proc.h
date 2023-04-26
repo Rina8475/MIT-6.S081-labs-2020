@@ -80,6 +80,16 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
+/* this struct store the info about alarm */
+struct alarminfo {
+  struct trapframe *trapframe;
+  uint64  handler;
+  int     ticks;
+  int     count;
+  int     mask;     /* whether stop count */
+  int     set;      /* whether this process has been set handler */
+};
+
 enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
@@ -103,4 +113,5 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  struct alarminfo alarminfo;  /* the info about alarm */
 };

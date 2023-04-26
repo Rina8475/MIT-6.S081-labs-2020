@@ -96,3 +96,46 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+/* sigalarm - set a handler to the process */
+uint64 sys_sigalarm(void) {
+  int ticks;
+  uint64 handler;
+  struct proc *p;
+
+  if (argint(0, &ticks) < 0 || argaddr(1, &handler) < 0) {
+    return -1;
+  }
+  p = myproc();
+  if (handler == 0 && ticks == 0) {
+    /* free alarm info */
+    p->alarminfo.set = 0;
+    return 0;
+  }
+
+  p->alarminfo.set       = 1;
+  p->alarminfo.mask      = 0;
+  p->alarminfo.count     = 0;
+  p->alarminfo.ticks     = ticks;
+  p->alarminfo.handler   = handler;
+  p->alarminfo.trapframe = 0;
+  return 0;
+}
+
+uint64 sys_sigreturn(void) {
+  struct proc *p;
+
+  p = myproc();
+  if (p->alarminfo.set == 0 || p->alarminfo.trapframe == 0) {
+    return -1;
+  }
+  /* restore the trapframe */
+  memmove(p->trapframe, p->alarminfo.trapframe, sizeof(struct trapframe));
+  /* free the trapframe in the alarminfo */
+  kfree(p->alarminfo.trapframe);
+  p->alarminfo.trapframe = 0;
+  /* reset the counter and mask */
+  p->alarminfo.count = 0;
+  p->alarminfo.mask  = 0;
+  return 0;
+}

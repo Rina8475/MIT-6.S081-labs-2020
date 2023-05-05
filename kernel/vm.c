@@ -181,9 +181,9 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
-      panic("uvmunmap: walk");
+      continue;
     if((*pte & PTE_V) == 0)
-      panic("uvmunmap: not mapped");
+      continue;
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
@@ -315,9 +315,9 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
-      panic("uvmcopy: pte should exist");
+      continue;
     if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+      continue;
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -348,6 +348,9 @@ uvmclear(pagetable_t pagetable, uint64 va)
   *pte &= ~PTE_U;
 }
 
+#include "spinlock.h"
+#include "proc.h"
+
 // Copy from kernel to user.
 // Copy len bytes from src to virtual address dstva in a given page table.
 // Return 0 on success, -1 on error.
@@ -355,6 +358,16 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  struct proc *p;
+
+  p = myproc();
+  if (is_pagefault(p, dstva)) {
+    handle_pagefault(p, dstva);
+  }
+  if (p->killed) {
+    printf("copyout: handle page fault error.\n");
+    return -1;
+  }
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
@@ -380,6 +393,16 @@ int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
   uint64 n, va0, pa0;
+  struct proc *p;
+
+  p = myproc();
+  if (is_pagefault(p, srcva)) {
+    handle_pagefault(p, srcva);
+  }
+  if (p->killed) {
+    printf("copyin: handle page fault error.\n");
+    return -1;
+  }
 
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);

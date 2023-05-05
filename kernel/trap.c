@@ -29,6 +29,35 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+int is_pagefault(struct proc *p, uint64 va) {
+  pte_t *walk(pagetable_t pagetable, uint64 va, int alloc);
+  pte_t *pte;
+
+  if (va < p->sz) {
+    pte = walk(p->pagetable, va, 0);
+    return pte == 0 || (*pte & PTE_V) == 0;
+  }
+  return 0;
+}
+
+void handle_pagefault(struct proc *p, uint64 va) {
+  uint64 pa;
+
+  pa = (uint64) kalloc();
+  if (pa == 0) {
+    printf("lazy alloc: out of memory\n");
+    p->killed = 1;
+  } else {
+    va = PGROUNDDOWN(va);
+    memset((void *) pa, 0, PGSIZE);
+    if (mappages(p->pagetable, va, PGSIZE, pa, PTE_R | PTE_W | PTE_U) < 0) {
+      printf("lazy alloc: map page error\n");
+      kfree((void *) pa);
+      p->killed = 1;
+    }
+  }
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -37,9 +66,13 @@ void
 usertrap(void)
 {
   int which_dev = 0;
+  uint64 stval, scause;
 
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
+
+  stval = r_stval();
+  scause = r_scause();
 
   // send interrupts and exceptions to kerneltrap(),
   // since we're now in the kernel.
@@ -67,6 +100,8 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if ((scause == 15 || scause == 13) && is_pagefault(p, stval)) {
+    handle_pagefault(p, stval);
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
